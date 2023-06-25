@@ -35,12 +35,12 @@ if sys.platform != 'darwin':
 
 logger = logging.get_logger(__name__)
 
-_CHECKPOINT_FOR_DOC = "THUDM/ChatGLM-6B"
+_CHECKPOINT_FOR_DOC = "THUDM/ChatGLM2-6B"
 _CONFIG_FOR_DOC = "ChatGLM6BConfig"
 
 CHATGLM_6B_PRETRAINED_MODEL_ARCHIVE_LIST = [
-    "THUDM/chatglm-6b",
-    # See all ChatGLM-6B models at https://huggingface.co/models?filter=chatglm
+    "THUDM/chatglm2-6b",
+    # See all ChatGLM models at https://huggingface.co/models?filter=chatglm
 ]
 
 
@@ -92,7 +92,7 @@ class RotaryEmbedding(nn.Module):
         self.dim = dim
         self.original_impl = original_impl
 
-    def forward_original_impl(
+    def forward_impl(
             self, seq_len: int, n_elem: int, dtype: torch.dtype, device: torch.device, base: int = 10000
     ):
         """Enhanced Transformer with Rotary Position Embedding.
@@ -118,14 +118,13 @@ class RotaryEmbedding(nn.Module):
         return cache
 
     def forward(self, max_seq_len, offset=0):
-        if self.original_impl:
-            return self.forward_original_impl(
-                max_seq_len, self.dim, dtype=self.inv_freq.dtype, device=self.inv_freq.device
-            )
+        return self.forward_impl(
+            max_seq_len, self.dim, dtype=self.inv_freq.dtype, device=self.inv_freq.device
+        )
 
 
 @torch.jit.script
-def apply_rotary_pos_emb_original(x: torch.Tensor, rope_cache: torch.Tensor) -> torch.Tensor:
+def apply_rotary_pos_emb(x: torch.Tensor, rope_cache: torch.Tensor) -> torch.Tensor:
     # x: [sq, b, np, hn]
     sq, b, np, hn = x.size(0), x.size(1), x.size(2), x.size(3)
     rot_dim = rope_cache.shape[-2] * 2
@@ -313,8 +312,6 @@ class SelfAttention(torch.nn.Module):
                                device=device, **_config_to_kwargs(config)
                                )
 
-        self.interleaved_qkv = config.interleaved_qkv
-
     def _allocate_memory(self, inference_max_sequence_len, batch_size, device=None, dtype=None):
         if self.multi_query_attention:
             num_attention_heads = self.num_multi_query_groups_per_partition
@@ -364,33 +361,18 @@ class SelfAttention(torch.nn.Module):
                 + (self.num_multi_query_groups_per_partition, self.hidden_size_per_attention_head)
             )
         else:
-            if self.interleaved_qkv:
-                new_tensor_shape = mixed_x_layer.size()[:-1] + \
-                                   (self.num_attention_heads_per_partition,
-                                    3 * self.hidden_size_per_attention_head)
-                mixed_x_layer = mixed_x_layer.view(*new_tensor_shape)
+            new_tensor_shape = mixed_x_layer.size()[:-1] + \
+                               (self.num_attention_heads_per_partition,
+                                3 * self.hidden_size_per_attention_head)
+            mixed_x_layer = mixed_x_layer.view(*new_tensor_shape)
 
             # [sq, b, np, 3 * hn] --> 3 [sq, b, np, hn]
             (query_layer, key_layer, value_layer) = split_tensor_along_last_dim(mixed_x_layer, 3)
 
-            if not self.interleaved_qkv:
-                query_layer = query_layer.view(
-                    query_layer.size()[:-1] + (
-                        self.num_attention_heads_per_partition, self.hidden_size_per_attention_head)
-                ).contiguous()
-                key_layer = key_layer.view(
-                    key_layer.size()[:-1] + (
-                        self.num_attention_heads_per_partition, self.hidden_size_per_attention_head)
-                ).contiguous()
-                value_layer = value_layer.view(
-                    value_layer.size()[:-1] + (
-                        self.num_attention_heads_per_partition, self.hidden_size_per_attention_head)
-                ).contiguous()
-
         # apply relative positional encoding (rotary embedding)
         if rotary_pos_emb is not None:
-            query_layer = apply_rotary_pos_emb_original(query_layer, rotary_pos_emb)
-            key_layer = apply_rotary_pos_emb_original(key_layer, rotary_pos_emb)
+            query_layer = apply_rotary_pos_emb(query_layer, rotary_pos_emb)
+            key_layer = apply_rotary_pos_emb(key_layer, rotary_pos_emb)
 
         # adjust key and value for inference
         if use_cache:
@@ -713,13 +695,7 @@ class ChatGLMModel(ChatGLMPreTrainedModel):
             config.hidden_size // config.num_attention_heads if config.kv_channels is None else config.kv_channels
         )
 
-        if config.rotary_percent < 1.0:
-            rotary_dim = int(rotary_dim * config.rotary_percent)
-
-        # partial rotary embeddings, which is better than full rotary
-        # Wang and Komatsuzaki et al
-        # https://github.com/kingoflolz/mesh-transformer-jax/
-        self.rotary_pos_emb = RotaryEmbedding(rotary_dim, original_impl=config.original_rope, device=device,
+        self.rotary_pos_emb = RotaryEmbedding(rotary_dim // 2, original_impl=config.original_rope, device=device,
                                               dtype=config.torch_dtype)
         self.encoder = init_method(GLMTransformer, config, **init_kwargs)
         self.output_layer = init_method(nn.Linear, config.hidden_size, config.padded_vocab_size, bias=False,
