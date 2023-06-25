@@ -66,7 +66,7 @@ pip install protobuf transformers==4.27.1 cpm_kernels torch>=2.0 gradio mdtex2ht
 For more instructions, including how to run CLI and web demos, and model quantization, please refer to our [Github Repo](https://github.com/THUDM/ChatGLM2-6B).
 
 ## Change Log
-* v0.1.0
+* v1.0
 
 ## 协议
 
