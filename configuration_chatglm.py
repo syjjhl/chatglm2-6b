@@ -21,7 +21,6 @@ class ChatGLMConfig(PretrainedConfig):
         add_qkv_bias=False,
         interleaved_qkv=False,
         bias_dropout_fusion=True,
-        rotary_percent=1.0,
         multi_query_attention=False,
         multi_query_group_num=1,
         apply_query_key_layer_scaling=True,
@@ -45,9 +44,7 @@ class ChatGLMConfig(PretrainedConfig):
         self.post_layer_norm = post_layer_norm
         self.add_bias_linear = add_bias_linear
         self.add_qkv_bias = add_qkv_bias
-        self.interleaved_qkv = interleaved_qkv
         self.bias_dropout_fusion = bias_dropout_fusion
-        self.rotary_percent = rotary_percent
         self.multi_query_attention = multi_query_attention
         self.multi_query_group_num = multi_query_group_num
         self.apply_query_key_layer_scaling = apply_query_key_layer_scaling
