@@ -702,6 +702,9 @@ class ChatGLMModel(ChatGLMPreTrainedModel):
                                         dtype=config.torch_dtype, **init_kwargs)
         self.gradient_checkpointing = False
 
+    def get_input_embeddings(self):
+        return self.embedding.word_embeddings
+
     def forward(
             self,
             input_ids,
