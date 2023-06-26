@@ -979,12 +979,13 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
                 outputs, past_key_values = outputs
             outputs = outputs.tolist()[0][len(inputs["input_ids"][0]):]
             response = tokenizer.decode(outputs)
-            response = self.process_response(response)
-            new_history = history + [(query, response)]
-            if return_past_key_values:
-                yield response, new_history, past_key_values
-            else:
-                yield response, new_history
+            if response and response[-1] != "�":
+                response = self.process_response(response)
+                new_history = history + [(query, response)]
+                if return_past_key_values:
+                    yield response, new_history, past_key_values
+                else:
+                    yield response, new_history
 
     @torch.no_grad()
     def stream_generate(
