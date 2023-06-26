@@ -69,6 +69,7 @@ class ChatGLMTokenizer(PreTrainedTokenizer):
         super().__init__(padding_side=padding_side, **kwargs)
         self.name = "GLMTokenizer"
 
+        self.vocab_file = vocab_file
         self.tokenizer = SPTokenizer(vocab_file)
         self.special_tokens = {
             "<bos>": self.tokenizer.bos_id,
