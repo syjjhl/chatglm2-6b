@@ -6,7 +6,6 @@ tags:
 - glm
 - chatglm
 - thudm
-pipeline_tag: text2text-generation
 ---
 # ChatGLM2-6B
 <p align="center">
