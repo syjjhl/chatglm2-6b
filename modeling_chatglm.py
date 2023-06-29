@@ -63,7 +63,7 @@ class PrefixEncoder(torch.nn.Module):
     Output shape: (batch-size, prefix-length, 2*layers*hidden)
     """
 
-    def __init__(self, config):
+    def __init__(self, config: ChatGLMConfig):
         super().__init__()
         self.prefix_projection = config.prefix_projection
         if self.prefix_projection:
@@ -75,7 +75,8 @@ class PrefixEncoder(torch.nn.Module):
                 torch.nn.Linear(config.hidden_size, config.num_layers * config.hidden_size * 2)
             )
         else:
-            self.embedding = torch.nn.Embedding(config.pre_seq_len, config.num_layers * config.hidden_size * 2)
+            self.embedding = torch.nn.Embedding(config.pre_seq_len,
+                                                config.num_layers * config.kv_channels * config.multi_query_group_num * 2)
 
     def forward(self, prefix: torch.Tensor):
         if self.prefix_projection:
@@ -629,8 +630,8 @@ class GLMTransformer(torch.nn.Module):
                     hidden_states,
                     attention_mask,
                     rotary_pos_emb,
-                    kv_cache=kv_caches[index],
-                    use_cache=use_cache
+                    kv_caches[index],
+                    use_cache
                 )
             else:
                 layer_ret = layer(
@@ -737,6 +738,9 @@ class ChatGLMModel(ChatGLMPreTrainedModel):
         if device is not None:
             init_kwargs["device"] = device
         self.embedding = init_method(Embedding, config, **init_kwargs)
+        self.num_layers = config.num_layers
+        self.multi_query_group_num = config.multi_query_group_num
+        self.kv_channels = config.kv_channels
 
         # Rotary positional embeddings
         self.seq_length = config.seq_length
@@ -768,8 +772,8 @@ class ChatGLMModel(ChatGLMPreTrainedModel):
             batch_size,
             self.pre_seq_len,
             self.num_layers * 2,
-            self.num_attention_heads,
-            self.hidden_size // self.num_attention_heads
+            self.multi_query_group_num,
+            self.kv_channels
         )
         # seq_len, b, nh, hidden_size
         past_key_values = self.dropout(past_key_values)
