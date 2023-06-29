@@ -406,11 +406,11 @@ class SelfAttention(torch.nn.Module):
             key_layer = apply_rotary_pos_emb(key_layer, rotary_pos_emb)
 
         # adjust key and value for inference
+        if kv_cache is not None:
+            cache_k, cache_v = kv_cache
+            key_layer = torch.cat((cache_k, key_layer), dim=0)
+            value_layer = torch.cat((cache_v, value_layer), dim=0)
         if use_cache:
-            if kv_cache is not None:
-                cache_k, cache_v = kv_cache
-                key_layer = torch.cat((cache_k, key_layer), dim=0)
-                value_layer = torch.cat((cache_v, value_layer), dim=0)
             kv_cache = (key_layer, value_layer)
         else:
             kv_cache = None
