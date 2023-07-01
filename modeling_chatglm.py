@@ -803,6 +803,14 @@ class ChatGLMModel(ChatGLMPreTrainedModel):
         if inputs_embeds is None:
             inputs_embeds = self.embedding(input_ids)
 
+        if self.pre_seq_len is not None:
+            if past_key_values is None:
+                past_key_values = self.get_prompt(batch_size=batch_size, device=input_ids.device,
+                                                  dtype=inputs_embeds.dtype)
+            if attention_mask is not None:
+                attention_mask = torch.cat([attention_mask.new_ones((batch_size, self.pre_seq_len)),
+                                            attention_mask], dim=-1)
+
         if full_attention_mask is None:
             if (attention_mask is not None and not attention_mask.all()) or (past_key_values and seq_length != 1):
                 full_attention_mask = self.get_masks(input_ids, past_key_values, padding_mask=attention_mask)
@@ -814,11 +822,6 @@ class ChatGLMModel(ChatGLMPreTrainedModel):
         else:
             rotary_pos_emb = rotary_pos_emb[None, :seq_length]
         rotary_pos_emb = rotary_pos_emb.transpose(0, 1).contiguous()
-
-        if past_key_values is None:
-            if self.pre_seq_len is not None:
-                past_key_values = self.get_prompt(batch_size=batch_size, device=input_ids.device,
-                                                  dtype=inputs_embeds.dtype)
 
         # Run encoder.
         hidden_states, presents, all_hidden_states, all_self_attentions = self.encoder(
