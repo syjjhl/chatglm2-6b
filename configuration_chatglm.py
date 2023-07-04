@@ -20,7 +20,6 @@ class ChatGLMConfig(PretrainedConfig):
         post_layer_norm=True,
         add_bias_linear=False,
         add_qkv_bias=False,
-        interleaved_qkv=False,
         bias_dropout_fusion=True,
         multi_query_attention=False,
         multi_query_group_num=1,
