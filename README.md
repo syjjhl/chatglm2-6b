@@ -76,7 +76,7 @@ For more instructions, including how to run CLI and web demos, and model quantiz
 
 ## 引用
 
-如果你觉得我们的工作有帮助的话，请考虑引用下列论文，ChatGLM2-6B 的论文会在近期公布，尽情期待～
+如果你觉得我们的工作有帮助的话，请考虑引用下列论文，ChatGLM2-6B 的论文会在近期公布，敬请期待～
 
 ```
 @article{zeng2022glm,
