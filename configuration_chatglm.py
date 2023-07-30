@@ -13,6 +13,7 @@ class ChatGLMConfig(PretrainedConfig):
         num_attention_heads=32,
         seq_length=2048,
         hidden_dropout=0.0,
+        classifier_dropout=None,
         attention_dropout=0.0,
         layernorm_epsilon=1e-5,
         rmsnorm=True,
@@ -40,6 +41,7 @@ class ChatGLMConfig(PretrainedConfig):
         self.num_attention_heads = num_attention_heads
         self.seq_length = seq_length
         self.hidden_dropout = hidden_dropout
+        self.classifier_dropout = classifier_dropout
         self.attention_dropout = attention_dropout
         self.layernorm_epsilon = layernorm_epsilon
         self.rmsnorm = rmsnorm
